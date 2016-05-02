@@ -3,12 +3,13 @@ import argparse
 import os
 import timeit
 # coding=utf-8 临时文件来存储数据，但不需要同其他程序共享
-import tempfile  
-#High-level file operations
+import tempfile
+# High-level file operations
 import shutil
-#atexit模块很简单，只定义了一个register函数用于注册程序退出时的回调函数，我们可以在这个回调函数中做一些资源清理的操作
+# atexit模块很简单，只定义了一个register函数用于注册程序退出时的回调函数，我们可以在这个回调函数中做一些资源清理的操作
 import atexit
 import zipfile
+import sys
 from os.path import join, isfile
 timer = timeit.default_timer
 per_file_compression = {}
@@ -33,11 +34,35 @@ def extract_apk(apk, destination_directory):
 
 
 def run_redex(args):
-    debug_mode = args.unpack - only or args.debug
+    debug_mode = args.unpack_only or args.debug
     unpac_start_time = timer()
     extracted_apk_dir = make_temp_dir('.redex_extracted_apk', debug_mode)
     log('Extracting apk...')
     extract_apk(args.input_apk, extracted_apk_dir)
+
+
+def want_trace():
+    try:
+        trace = os.environ['TRACE']
+    except KeyError:
+        return False
+    for t in trace.split(','):
+        try:
+            return int(t) > 0
+        except ValueError:
+            pass
+        try:
+            (module, level) = t.split(':')
+            if module == 'REDEX' and int(level) > 0:
+                return True
+        except ValueError:
+            pass
+    return False
+
+
+def log(*stuff):
+    if want_trace():
+        print(*stuff, file=sys.stderr)
 
 
 def arg_parser(
